@@ -80,8 +80,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\lackn\Desktop\FluidSim2D\External\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\lackn\Desktop\FluidSim2D\External\Libs;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Laptop2\Uni\7.Semester\FluidSimBachelorThesis\External\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Laptop2\Uni\7.Semester\FluidSimBachelorThesis\External\Libs;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
