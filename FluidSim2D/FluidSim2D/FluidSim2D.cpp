@@ -38,11 +38,11 @@ constexpr std::size_t NumJacobiRounds{30 & ~0x1};
 // Identifiers
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
-static std::string LoadShader(const char* const name)
+static std::string LoadShader(std::string_view name)
 {
     std::ifstream file;
 	file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	file.open(name);
+	file.open(name.data());
 
     return {std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
 };
@@ -196,96 +196,35 @@ void MainProgram::DrawQuad()
 
 void MainProgram::Load2DShaders()
 {
-    CStdGLShader texCoordsShader{CStdShader::Type::Vertex, LoadShader("../Shader/tex_coords.vert")};
-    texCoordsShader.Compile();
+	CStdGLShader texCoordsShader{CStdShader::Type::Vertex, LoadShader("../Shader/tex_coords.vert")};
+	texCoordsShader.Compile();
 
-    CStdGLShader advectShader{CStdShader::Type::Fragment, LoadShader("../Shader/advection.frag")};
-    advectShader.Compile();
+	const auto newShader = [this, &texCoordsShader](CStdGLShaderProgram &shaderProgram, std::string_view objectLabel)
+	{
+		CStdGLShader shader{CStdShader::Type::Fragment, LoadShader(std::string{"../Shader/"} + objectLabel.data() + ".frag")};
+		shader.Compile();
 
-    advectShaderProgram.AddShader(&texCoordsShader);
-    advectShaderProgram.AddShader(&advectShader);
-    advectShaderProgram.Link();
-	advectShaderProgram.SetObjectLabel("advect");
+		shaderProgram.AddShader(&texCoordsShader);
+		shaderProgram.AddShader(&shader);
+		shaderProgram.Link();
+		shaderProgram.SetObjectLabel(objectLabel);
 
-    CStdGLShader addImpulseShader{CStdShader::Type::Fragment, LoadShader("../Shader/add_impulse.frag")};
-    addImpulseShader.Compile();
+		glm::vec2 s{gridScale};
+		shaderProgram.Select();
+		shaderProgram.SetUniform("stride", gridScale);
+	};
 
-    addImpulseShaderProgram.AddShader(&texCoordsShader);
-    addImpulseShaderProgram.AddShader(&addImpulseShader);
-    addImpulseShaderProgram.Link();
-	addImpulseShaderProgram.SetObjectLabel("addImpulse");
-
-	CStdGLShader addRadialImpulseShader{CStdShader::Type::Fragment, LoadShader("../Shader/add_radial_impulse.frag")};
-	addRadialImpulseShader.Compile();
-
-	addRadialImpulseShaderProgram.AddShader(&texCoordsShader);
-	addRadialImpulseShaderProgram.AddShader(&addRadialImpulseShader);
-	addRadialImpulseShaderProgram.Link();
-	addRadialImpulseShaderProgram.SetObjectLabel("addRadialImpulse");
-
-    CStdGLShader vorticityShader{CStdShader::Type::Fragment, LoadShader("../Shader/vorticity.frag")};
-    vorticityShader.Compile();
-
-    vorticityShaderProgram.AddShader(&texCoordsShader);
-    vorticityShaderProgram.AddShader(&vorticityShader);
-    vorticityShaderProgram.Link();
-	vorticityShaderProgram.SetObjectLabel("vorticity");
-
-    CStdGLShader addVorticityShader{CStdShader::Type::Fragment, LoadShader("../Shader/add_vorticity.frag")};
-    addVorticityShader.Compile();
-
-    addVorticityShaderProgram.AddShader(&texCoordsShader);
-    addVorticityShaderProgram.AddShader(&addVorticityShader);
-    addVorticityShaderProgram.Link();
-	addVorticityShaderProgram.SetObjectLabel("addVorticity");
-
-    CStdGLShader jacobiShader{CStdShader::Type::Fragment, LoadShader("../Shader/jacobi.frag")};
-    jacobiShader.Compile();
-
-    jacobiShaderProgram.AddShader(&texCoordsShader);
-    jacobiShaderProgram.AddShader(&jacobiShader);
-    jacobiShaderProgram.Link();
-	jacobiShaderProgram.SetObjectLabel("jacobi");
-
-    CStdGLShader divergenceShader{CStdShader::Type::Fragment, LoadShader("../Shader/divergence.frag")};
-    divergenceShader.Compile();
-
-    divergenceShaderProgram.AddShader(&texCoordsShader);
-    divergenceShaderProgram.AddShader(&divergenceShader);
-    divergenceShaderProgram.Link();
-	divergenceShaderProgram.SetObjectLabel("divergence");
-
-    CStdGLShader gradientShader{CStdShader::Type::Fragment, LoadShader("../Shader/gradient.frag")};
-    gradientShader.Compile();
-
-    gradientShaderProgram.AddShader(&texCoordsShader);
-    gradientShaderProgram.AddShader(&gradientShader);
-    gradientShaderProgram.Link();
-	gradientShaderProgram.SetObjectLabel("gradient");
-
-    CStdGLShader subtractShader{CStdShader::Type::Fragment, LoadShader("../Shader/subtract.frag")};
-    subtractShader.Compile();
-
-    subtractShaderProgram.AddShader(&texCoordsShader);
-    subtractShaderProgram.AddShader(&subtractShader);
-    subtractShaderProgram.Link();
-	subtractShaderProgram.SetObjectLabel("subtract");
-
-    CStdGLShader boundaryShader{CStdShader::Type::Fragment, LoadShader("../Shader/boundary.frag")};
-    boundaryShader.Compile();
-
-    boundaryShaderProgram.AddShader(&texCoordsShader);
-    boundaryShaderProgram.AddShader(&boundaryShader);
-    boundaryShaderProgram.Link();
-	boundaryShaderProgram.SetObjectLabel("boundary");
-
-    CStdGLShader copyShader{CStdShader::Type::Fragment, LoadShader("../Shader/copy.frag")};
-    copyShader.Compile();
-
-    copyShaderProgram.AddShader(&texCoordsShader);
-    copyShaderProgram.AddShader(&copyShader);
-    copyShaderProgram.Link();
-	copyShaderProgram.SetObjectLabel("copy");
+	newShader(advectShaderProgram, "advection");
+	newShader(addImpulseShaderProgram, "add_impulse");
+	newShader(addRadialImpulseShaderProgram, "add_radial_impulse");
+	newShader(vorticityShaderProgram, "vorticity");
+	newShader(addVorticityShaderProgram, "add_vorticity");
+	newShader(jacobiShaderProgram, "jacobi");
+	newShader(divergenceShaderProgram, "divergence");
+	newShader(gradientShaderProgram, "gradient");
+	newShader(subtractShaderProgram, "subtract");
+	newShader(boundaryShaderProgram, "boundary");
+	newShader(copyShaderProgram, "copy");
 
     CStdGLShader vertexShader{ CStdShader::Type::Vertex, LoadShader("../Shader/vertexShader.glsl") };
     vertexShader.Compile();
@@ -424,7 +363,7 @@ void MainProgram::Run()
         gradientShaderProgram.SetUniform("gs", glUniform1f, vars.gridScale);
         BindTexture(gradientShaderProgram, "field", pressureBuffer.GetFront().GetTexture(), 0);
         DrawQuad();
-        // No swap, back buffer has the gradient
+		// No swap, back buffer has the gradient
         
         // Calculate U = W - grad(P) where div(U)=0
         velocityBuffer.GetBack().Bind();
