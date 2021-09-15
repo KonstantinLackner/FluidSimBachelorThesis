@@ -17,6 +17,7 @@
 #include <thread>
 #include <unordered_map>
 
+#include "FPSLimiter.h"
 #include "ImpulseState.h"
 #include "Shader.h"
 
@@ -127,7 +128,8 @@ public:
           pressureBuffer{width, height},
           vorticityBuffer{width, height},
           temporaryBuffer{width, height},
-          border{InitBorder()}
+          border{InitBorder()},
+		  limiter{FPS}
 	{
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     }
@@ -173,6 +175,8 @@ private:
     Border border;
     float dt;
     ImpulseState impulseState;
+    static constexpr inline int FPS{ 60 };
+    FPSLimiter limiter;
 };
 
 // Copies frameBuffer from source to destination
@@ -303,7 +307,7 @@ constexpr struct Variables
     float viscosity;
     float splatRadius;
     bool droplets;
-} vars{0.9f, 0.3f, 0.005f, 0.001f, 0.003f, false};
+} vars{0.99f, 0.3f, 0.005f, 0.001f, 0.003f, false};
 
 void MainProgram::Run()
 {
@@ -374,7 +378,7 @@ void MainProgram::Run()
             velocityBuffer.SwapBuffers();
 		}
 #pragma endregion
-        
+
 #pragma region Vorticity
         vorticityBuffer.Bind();
         vorticityShaderProgram.Select();
@@ -410,17 +414,18 @@ void MainProgram::Run()
         divergenceShaderProgram.SetUniform("gs", glUniform1f, vars.gridScale);
         BindTexture(divergenceShaderProgram, "field", velocityBuffer.GetFront().GetTexture(), 0);
         DrawQuad();
-
+		
         // Solve for P in: Laplacian(P) = div(W)
         SolvePoissonSystem(pressureBuffer, velocityBuffer.GetBack(), -vars.gridScale * vars.gridScale, 4.0f);
-
+		
+		// Calculate grad(P)
         pressureBuffer.GetBack().Bind();
         gradientShaderProgram.Select();
         gradientShaderProgram.SetUniform("gs", glUniform1f, vars.gridScale);
         BindTexture(gradientShaderProgram, "field", pressureBuffer.GetFront().GetTexture(), 0);
         DrawQuad();
         // No swap, back buffer has the gradient
-
+        
         // Calculate U = W - grad(P) where div(U)=0
         velocityBuffer.GetBack().Bind();
         subtractShaderProgram.Select();
@@ -430,6 +435,7 @@ void MainProgram::Run()
         velocityBuffer.SwapBuffers();
 
         SetBounds(-1);
+		
             
 #pragma endregion
 
@@ -442,6 +448,8 @@ void MainProgram::Run()
         BindTexture(renderShaderProgram, "field", velocityBuffer.GetFront().GetTexture(), 0);
         DrawQuad();
 #pragma endregion
+
+        limiter.Regulate();
 
         glfwSwapBuffers(window);
     }

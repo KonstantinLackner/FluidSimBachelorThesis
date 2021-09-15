@@ -148,10 +148,12 @@
   <ItemGroup>
     <ClCompile Include="..\..\External\glad\src\glad.c" />
     <ClCompile Include="FluidSim2D.cpp" />
+    <ClCompile Include="FPSLimiter.cpp" />
     <ClCompile Include="ImpulseState.cpp" />
     <ClCompile Include="Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FPSLimiter.h" />
     <ClInclude Include="ImpulseState.h" />
     <ClInclude Include="Shader.h" />
   </ItemGroup>

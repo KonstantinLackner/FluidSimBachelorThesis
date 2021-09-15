@@ -30,6 +30,9 @@
     <ClCompile Include="ImpulseState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FPSLimiter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -37,6 +40,9 @@
     </ClInclude>
     <ClInclude Include="ImpulseState.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FPSLimiter.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
