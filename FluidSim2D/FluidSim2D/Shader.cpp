@@ -318,6 +318,28 @@ void CStdGLShaderProgram::OnDeselect()
 	glUseProgram(GL_NONE);
 }
 
+void CStdRectangle::GenerateGeometry(std::vector<GLfloat> &vertices, std::vector<GLuint> &elements, std::vector<GLfloat> &normals, std::vector<GLfloat> &textureCoordinates)
+{
+	vertices = {
+	-1.0f, -1.0f, 0.0f,   // top left
+		1.0f, -1.0f, 0.0f,  // bottom left
+		1.0f,  1.0f, 0.0f,  // bottom right
+	-1.0f,  1.0f, 0.0f,  // top right
+	};
+
+	elements = {  // note that we start from 0!
+		0, 1, 2,   // first triangle
+		2, 3, 0    // second triangle
+	};
+
+	textureCoordinates = {
+		0.0f, 0.0f,
+		1.0f, 0.0f,
+		1.0f, 1.0f,
+		0.0f, 1.0f
+	};
+}
+
 CStdTexture::CStdTexture(const std::int32_t width, const std::int32_t height, const GLenum internalFormat, const GLenum format, const GLenum type, void *const data)
 	: width{width}, height{height}, internalFormat{internalFormat}, format{format}, type{type}
 {
@@ -394,8 +416,43 @@ void CStdFramebuffer::Unbind() const
 	glBindFramebuffer(GL_FRAMEBUFFER, GL_NONE);
 }
 
+/*
+void CStdFramebuffer::Resize(std::int32_t newWidth, std::int32_t newHeight, CStdGLShaderProgram &copyShader, CStdRectangle &rectangle)
+{
+	width = newWidth;
+	height = newHeight;
+
+	CStdTexture oldColorAttachment{std::exchange(colorAttachment, CStdTexture{newWidth, newHeight, InternalFormat, Format, Type})};
+
+	// Temp
+	unsigned int tex_id = texture.Id();
+	unsigned int fbo_id = fboId;
+
+	fboId = 0;
+
+	if (!texture.Init(newWidth, newHeight, depth))
+		throw exception("Failed to resize texture");
+
+	if (!Init())
+		throw exception("Failed to resize FBO");
+
+	// Draw old texture onto new one
+	Bind();
+	shader.Use();
+	shader.SetInt("field", 0);
+	_GL_WRAP1(glActiveTexture, GL_TEXTURE0);
+	_GL_WRAP2(glBindTexture, texture.TexTarget(), tex_id);
+	_GL_WRAP1(glBindVertexArray, quad.VAO);
+	_GL_WRAP4(glDrawElements, GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+	// Delete old stuff
+	_GL_WRAP2(glDeleteTextures, 1, &tex_id);
+	_GL_WRAP2(glDeleteFramebuffers, 1, &fbo_id);
+}
+*/
+
 CStdSwappableFramebuffer::CStdSwappableFramebuffer(const std::int32_t width, const std::int32_t height)
-	: buffers{{{width, height}, {width, height}}}, front{&buffers[0]}, back{&buffers[1]}
+	: buffer1{width, height}, buffer2{width, height}, front{&buffer1}, back{&buffer2}
 {
 }
 

@@ -264,21 +264,56 @@ private:
 	std::array<GLuint, 4> VBO{GL_NONE};
 };
 
+
+
+class CStdRectangle : public CStdVAOObject<CStdRectangle>
+{
+public:
+    static constexpr inline auto Dimensions = 3;
+    static constexpr inline auto PrimitiveType = GL_TRIANGLES;
+
+public:
+	CStdRectangle() : CStdVAOObject{} { Init(); }
+
+protected:
+	virtual void GenerateGeometry(std::vector<GLfloat> &vertices, std::vector<GLuint> &elements, std::vector<GLfloat> &normals, std::vector<GLfloat> &textureCoordinates) override;
+};
+
 class CStdTexture
 {
 public:
+	CStdTexture() : width{0}, height{0}, texture{GL_NONE}, internalFormat{GL_NONE}, format{GL_NONE}, type{GL_NONE} {}
 	CStdTexture(std::int32_t width, std::int32_t height, GLenum internalFormat, GLenum format, GLenum type, void *const data = nullptr);
 	CStdTexture(const CStdTexture &) = delete;
-	CStdTexture(CStdTexture&& other) = default;
+	CStdTexture(CStdTexture&& other) : CStdTexture{}
+	{
+		swap(*this, other);
+	}
 	~CStdTexture();
 
 	CStdTexture& operator=(const CStdTexture& other) = delete;
-	CStdTexture& operator=(CStdTexture &&other) = default;
+	CStdTexture& operator=(CStdTexture &&other)
+	{
+		swap(*this, other);
+		return *this;
+	}
+
+	friend void swap(CStdTexture &first, CStdTexture &second)
+	{
+		using std::swap;
+
+		swap(first.texture, second.texture);
+		swap(first.width, second.width);
+		swap(first.height, second.height);
+		swap(first.internalFormat, second.internalFormat);
+		swap(first.format, second.format);
+		swap(first.type, second.type);
+	}
 
 public:
 	void Bind(GLenum offset) const;
 	void SetData(void *const data) const;
-	virtual GLenum GetTarget() const { return GL_TEXTURE_2D; }
+	GLenum GetTarget() const { return GL_TEXTURE_2D; }
 
 	GLuint GetTexture() const { return texture; }
 
@@ -296,14 +331,35 @@ static_assert(std::is_move_constructible_v<CStdTexture>);
 class CStdFramebuffer
 {
 public:
+	CStdFramebuffer() : colorAttachment{}, FBO{GL_NONE} {}
 	CStdFramebuffer(std::int32_t width, std::int32_t height);
 	~CStdFramebuffer();
+
+	CStdFramebuffer(CStdFramebuffer &&other) : CStdFramebuffer{}
+	{
+		swap(*this, other);
+	}
+
+	CStdFramebuffer &operator=(CStdFramebuffer &&other)
+	{
+		swap(*this, other);
+		return *this;
+	}
+
+	friend void swap(CStdFramebuffer &first, CStdFramebuffer &second)
+	{
+		using std::swap;
+		swap(first.colorAttachment, second.colorAttachment);
+		swap(first.FBO, second.FBO);
+	}
 
 public:
 	void Bind() const;
 	void BindTexture(GLenum offset) const;
 	void Unbind() const;
 	const CStdTexture &GetTexture() const { return colorAttachment; }
+
+	//void Resize(std::int32_t newWidth, std::int32_t newHeight, CStdGLShaderProgram &copyShader, CStdRectangle &rectangle);
 
 private:
 	static constexpr inline auto InternalFormat = GL_RG16F;
@@ -317,7 +373,27 @@ private:
 class CStdSwappableFramebuffer
 {
 public:
+	CStdSwappableFramebuffer() : buffer1{}, buffer2{}, front{nullptr}, back{nullptr} {}
 	CStdSwappableFramebuffer(std::int32_t width, std::int32_t height);
+	CStdSwappableFramebuffer(CStdSwappableFramebuffer &&other) : CStdSwappableFramebuffer{}
+	{
+		swap(*this, other);
+	}
+
+	CStdSwappableFramebuffer &operator=(CStdSwappableFramebuffer &&other)
+	{
+		swap(*this, other);
+		return *this;
+	}
+
+	friend void swap(CStdSwappableFramebuffer &first, CStdSwappableFramebuffer &second)
+	{
+		using std::swap;
+		swap(first.buffer1, second.buffer1);
+		swap(first.buffer2, second.buffer2);
+		first.front = second.front == &second.buffer1 ? &first.buffer1 : &first.buffer2;
+		first.back = second.back == &second.buffer2 ? &first.buffer2 : &first.buffer1;
+	}
 
 public:
 	void Bind() const;
@@ -328,7 +404,8 @@ public:
 	const CStdFramebuffer &GetBack() const { return *back; }
 
 private:
-	std::array<CStdFramebuffer, 2> buffers;
+	CStdFramebuffer buffer1;
+	CStdFramebuffer buffer2;
 	CStdFramebuffer *front;
 	CStdFramebuffer *back;
 };

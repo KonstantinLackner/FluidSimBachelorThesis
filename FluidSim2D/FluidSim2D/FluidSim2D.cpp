@@ -54,39 +54,6 @@ static void APIENTRY DebugMessageCallback(const GLenum source, const GLenum type
 	OutputDebugStringA(msg.str().c_str());
 }
 
-class CStdRectangle : public CStdVAOObject<CStdRectangle>
-{
-public:
-    static constexpr inline auto Dimensions = 3;
-    static constexpr inline auto PrimitiveType = GL_TRIANGLES;
-
-public:
-	CStdRectangle() : CStdVAOObject{} { Init(); }
-
-protected:
-	virtual void GenerateGeometry(std::vector<GLfloat> &vertices, std::vector<GLuint> &elements, std::vector<GLfloat> &normals, std::vector<GLfloat> &textureCoordinates) override
-	{
-		vertices = {
-		-1.0f, -1.0f, 0.0f,   // top left
-		 1.0f, -1.0f, 0.0f,  // bottom left
-		 1.0f,  1.0f, 0.0f,  // bottom right
-		-1.0f,  1.0f, 0.0f,  // top right
-		};
-
-		elements = {  // note that we start from 0!
-			0, 1, 2,   // first triangle
-			2, 3, 0    // second triangle
-		};
-
-		textureCoordinates = {
-			0.0f, 0.0f,
-			1.0f, 0.0f,
-			1.0f, 1.0f,
-			0.0f, 1.0f
-		};
-	}
-};
-
 class CStdLine : public CStdVAOObject<CStdLine>
 {
 public:
@@ -148,6 +115,8 @@ private:
     void BindTexture(CStdGLShaderProgram &program, const std::string &key, const CStdTexture &texture, GLuint offset);
     void SolvePoissonSystem(CStdSwappableFramebuffer &swappableBuffer, const CStdFramebuffer &initialValue, float alpha, float beta);
     glm::vec2 RandomPosition() const;
+    void ResizeFramebuffer(CStdFramebuffer &frameBuffer, std::int32_t newWidth, std::int32_t newHeight);
+    void ResizeFramebuffer(CStdSwappableFramebuffer &swappableBuffer, std::int32_t newWidth, std::int32_t newHeight);
 
 private:
     CStdGLShaderProgram advectShaderProgram;
@@ -381,7 +350,7 @@ void MainProgram::Run()
 
 #pragma region Rendering
         velocityBuffer.Unbind();
-		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+		glViewport(0, 0, width, height);
 		glClear(GL_COLOR_BUFFER_BIT);
         renderShaderProgram.Select();
         BindTexture(renderShaderProgram, "field", velocityBuffer.GetFront().GetTexture(), 0);
@@ -400,6 +369,28 @@ void MainProgram::ProcessInput()
     double cursorY;
     glfwGetCursorPos(window, &cursorX, &cursorY);
 	impulseState.Update(cursorX, height - cursorY, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS);
+    
+    int frameBufferWidth = 0, frameBufferHeight = 0;
+    int windowWidth = 0, windowHeight = 0;
+    glfwGetFramebufferSize(window, &frameBufferWidth, &frameBufferHeight);
+    glfwGetWindowSize(window, &windowWidth, &windowHeight);
+
+    if (frameBufferWidth != width || height != frameBufferHeight)
+    {
+        // For now enforce a square viewport
+        width = frameBufferHeight;
+        height = frameBufferHeight;
+
+        if (windowHeight != windowWidth)
+            glfwSetWindowSize(window, windowHeight, windowHeight);
+
+        gridScale = glm::vec2{1.0f / width, 1.0f / height};
+
+        ResizeFramebuffer(velocityBuffer, width, height);
+        ResizeFramebuffer(pressureBuffer, width, height);
+        ResizeFramebuffer(vorticityBuffer, width, height);
+        ResizeFramebuffer(temporaryBuffer, width, height);
+    }
 }
 
 void MainProgram::DoDroplets()
@@ -512,7 +503,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     // ---------------------------------
     
     // GLFW window creation
@@ -555,6 +546,26 @@ int main()
 glm::vec2 MainProgram::RandomPosition() const
 {
     return { std::rand() % width, std::rand() % height };
+}
+
+void MainProgram::ResizeFramebuffer(CStdFramebuffer &frameBuffer, std::int32_t newWidth, std::int32_t newHeight)
+{
+    CStdFramebuffer newFrameBuffer{newWidth, newHeight};
+
+    CopyBuffers(frameBuffer, newFrameBuffer);
+    frameBuffer = std::move(newFrameBuffer);
+}
+
+void MainProgram::ResizeFramebuffer(CStdSwappableFramebuffer &swappableBuffer, std::int32_t newWidth, std::int32_t newHeight)
+{
+    CStdSwappableFramebuffer newSwappableBuffer{newWidth, newHeight};
+
+    CopyBuffers(swappableBuffer.GetFront(), newSwappableBuffer.GetFront());
+    CopyBuffers(swappableBuffer.GetBack(), newSwappableBuffer.GetBack());
+
+    swappableBuffer = std::move(newSwappableBuffer);
+
+    newWidth;
 }
 
 // GLFW - Window size change callback function
